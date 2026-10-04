@@ -1,4 +1,5 @@
 using Dalamud.Interface;
+using Dalamud.Interface.ImGuiFontChooserDialog;
 using ImSharp;
 using Luna;
 using Penumbra.UI.ModsTab;
@@ -8,8 +9,11 @@ namespace Penumbra.UI;
 
 public sealed class UiSettings(UiConfig config, IUiBuilder uiBuilder) : IUiService
 {
+    private SingleFontChooserDialog? _fontChooser;
+
     public void Draw()
     {
+        HandleFontChooserResult();
         DrawWindowSettings();
         DrawDisplaySettings();
         DrawModSelectorSettings();
@@ -111,6 +115,21 @@ public sealed class UiSettings(UiConfig config, IUiBuilder uiBuilder) : IUiServi
         });
         LunaStyle.DrawAlignedHelpMarkerLabel("Mod Changed Item Display"u8,
             "Configure how to display the changed items of a single mod in the mods info panel."u8);
+        if (Im.Button("Choose Mod Title Font"u8))
+        {
+            _fontChooser = SingleFontChooserDialog.CreateAuto((UiBuilder)uiBuilder);
+            _fontChooser.Title = "Choose Mod Title Font";
+            _fontChooser.SelectedFont = config.ModTitleFont;
+        }
+        Im.Line.Same();
+        if (Im.Button("Reset Default Font"u8))
+        {
+            config.ModTitleFont = UiConfig.DefaultModTitleFont;
+            config.Save();
+        }
+        Im.Text("Current:"u8);
+        Im.Line.Same();
+        Im.Text(config.ModTitleFont.ToLocalizedString(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName));
         if (SettingsTab.Checkbox("Omit Machinist Offhands in Changed Items"u8,
                 "Omits all Aetherotransformers (machinist offhands) in the changed items tabs because any change on them changes all of them at the moment.\n\n"u8
               + "Changing this triggers a rediscovery of your mods so all changed items can be updated."u8,
@@ -122,6 +141,20 @@ public sealed class UiSettings(UiConfig config, IUiBuilder uiBuilder) : IUiServi
                 config.HidePrioritiesInSelector))
             config.HidePrioritiesInSelector ^= true;
         LunaStyle.DrawSeparator();
+    }
+
+    private void HandleFontChooserResult()
+    {
+        if (_fontChooser is null || !_fontChooser.ResultTask.IsCompleted)
+            return;
+
+        if (_fontChooser.ResultTask.IsCompletedSuccessfully)
+        {
+            config.ModTitleFont = _fontChooser.ResultTask.Result;
+            config.Save();
+        }
+
+        _fontChooser = null;
     }
 
     private void DrawModSelectorSettings()

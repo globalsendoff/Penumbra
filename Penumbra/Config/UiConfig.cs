@@ -1,6 +1,9 @@
 using System.Text.Json;
+using Dalamud.Interface.FontIdentifier;
+using Dalamud.Interface.GameFonts;
 using Luna;
 using Luna.Generators;
+using Newtonsoft.Json;
 using Penumbra.Files;
 using Penumbra.Services;
 using Penumbra.UI.Classes;
@@ -61,6 +64,9 @@ public sealed partial class UiConfig : ConfigurationFile<FilenameService>
 
     [ConfigProperty]
     private ChangedItemMode _changedItemDisplay = ChangedItemMode.GroupedCollapsed;
+
+    [ConfigProperty(EventName = "ModTitleFontChanged")]
+    private SingleFontSpec _modTitleFont = DefaultModTitleFont;
 
     [ConfigProperty(EventName = "HideChangedItemFiltersChanged")]
     private bool _hideChangedItemFilters = false;
@@ -159,6 +165,15 @@ public sealed partial class UiConfig : ConfigurationFile<FilenameService>
     public override int CurrentVersion
         => 100;
 
+    public static SingleFontSpec DefaultModTitleFont
+        => new() { FontId = new GameFontAndFamilyId(GameFontFamily.Jupiter), SizePt = 23 };
+
+    private static readonly JsonSerializerSettings FontSpecSerializerSettings = new()
+    {
+        TypeNameHandling                 = TypeNameHandling.All,
+        TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Simple,
+    };
+
     protected override void AddData(Utf8JsonWriter j)
     {
         using (var tempObject = j.TemporaryObject("Window"u8))
@@ -187,6 +202,9 @@ public sealed partial class UiConfig : ConfigurationFile<FilenameService>
             tempObject.WriteIfNot("HideMachinistOffhandFromChangedItems"u8, HideMachinistOffhandFromChangedItems, true);
             tempObject.WriteEnumIfNot("ChangedItemDisplay"u8, ChangedItemDisplay, ChangedItemMode.GroupedCollapsed);
         }
+
+        j.WritePropertyName("ModTitleFont"u8);
+        j.WriteRawValue(JsonConvert.SerializeObject(ModTitleFont, FontSpecSerializerSettings));
 
         using (var tempObject = j.TemporaryObject("ModSelector"u8))
         {
@@ -253,6 +271,10 @@ public sealed partial class UiConfig : ConfigurationFile<FilenameService>
                 display.PropertyOrDefault("HideMachinistOffhandFromChangedItems"u8, HideMachinistOffhandFromChangedItems);
             ChangedItemDisplay = display.EnumOrDefault("ChangedItemDisplay"u8, ChangedItemDisplay);
         }
+
+        if (j.TryGetProperty("ModTitleFont"u8, out var modTitleFont))
+            ModTitleFont = JsonConvert.DeserializeObject<SingleFontSpec>(modTitleFont.GetRawText(), FontSpecSerializerSettings)
+                        ?? ModTitleFont;
 
         if (j.TryReadObject("ModSelector"u8, out var modSelector))
         {

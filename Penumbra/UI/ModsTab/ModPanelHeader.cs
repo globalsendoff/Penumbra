@@ -1,4 +1,5 @@
 using Dalamud.Interface.GameFonts;
+using Dalamud.Interface.FontIdentifier;
 using Dalamud.Interface.ManagedFontAtlas;
 using Dalamud.Plugin;
 using ImSharp;
@@ -13,17 +14,22 @@ namespace Penumbra.UI.ModsTab;
 public class ModPanelHeader : IDisposable
 {
     /// <summary> We use a big, nice game font for the title. </summary>
-    private readonly IFontHandle _nameFont;
+    private          IFontHandle _nameFont;
+    private readonly IFontAtlas  _fontAtlas;
 
     private readonly CommunicatorService _communicator;
     private readonly ModSelection        _modSelection;
+    private readonly UiConfig            _config;
     private          float               _lastPreSettingsHeight;
 
-    public ModPanelHeader(IDalamudPluginInterface pi, CommunicatorService communicator, ModSelection modSelection)
+    public ModPanelHeader(IDalamudPluginInterface pi, CommunicatorService communicator, ModSelection modSelection, UiConfig config)
     {
         _communicator = communicator;
         _modSelection = modSelection;
-        _nameFont     = pi.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Axis, new GameFontStyle(GameFontFamilyAndSize.Jupiter23).SizePx));
+        _config       = config;
+        _fontAtlas    = pi.UiBuilder.FontAtlas;
+        _nameFont     = config.ModTitleFont.CreateFontHandle(_fontAtlas);
+        _config.ModTitleFontChanged += OnModTitleFontChanged;
         _communicator.ModDataChanged.Subscribe(OnModDataChange, ModDataChanged.Priority.ModPanelHeader);
     }
 
@@ -111,6 +117,7 @@ public class ModPanelHeader : IDisposable
     public void Dispose()
     {
         _nameFont.Dispose();
+        _config.ModTitleFontChanged -= OnModTitleFontChanged;
         _communicator.ModDataChanged.Unsubscribe(OnModDataChange);
     }
 
@@ -248,6 +255,14 @@ public class ModPanelHeader : IDisposable
             Im.Line.NoSpacing();
             Im.Text(_modWebsite);
         }
+    }
+
+    private void OnModTitleFontChanged(SingleFontSpec font, SingleFontSpec _)
+    {
+        _nameFont.Dispose();
+        _nameFont = font.CreateFontHandle(_fontAtlas);
+        _mod     = null;
+        _modName = string.Empty;
     }
 
     /// <summary> Just update the data when any relevant field changes. </summary>

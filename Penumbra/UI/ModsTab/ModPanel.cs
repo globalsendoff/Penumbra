@@ -15,12 +15,12 @@ public class ModPanel : IDisposable, IPanel
     private          bool           _resetCursor;
 
     public ModPanel(IDalamudPluginInterface pi, ModSelection selection, ModPanelTabBar tabs,
-        MultiModPanel multiModPanel, CommunicatorService communicator)
+        MultiModPanel multiModPanel, CommunicatorService communicator, UiConfig config)
     {
         _selection     = selection;
         _tabs          = tabs;
         _multiModPanel = multiModPanel;
-        _header        = new ModPanelHeader(pi, communicator, selection);
+        _header        = new ModPanelHeader(pi, communicator, selection, config);
         _selection.Subscribe(OnSelectionChange, ModSelection.Priority.ModPanel);
         OnSelectionChange(new ModSelection.Arguments(null, _selection.Mod));
     }
